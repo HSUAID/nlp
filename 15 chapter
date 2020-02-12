@@ -1,0 +1,172 @@
+'''
+3、UserInfo数据处理:
+
+3.1、查看UserInfo数据总体情况
+在第一轮预处理中，由于UserInfo_11、UserInfo_12、UserInfo_13这三个特征缺失值过多，已经做删除处理
+目前UserInfo特征共有UserInfo_1-10和UserInfo_14-24，共21个特征
+首先，通过feature_list函数将所有的UserInfo特征合并到一个列表userinfo_feature_list内
+其次，利用describe方法查看所有UserInfo特征的总体信息
+'''
+# 创建空列表，用来存储所有UserInfo特征名
+userinfo_feature_list = []
+# 利用feature_list生成UserInfo_1-UserInfo_10这10个特征名称，并合并入userinfo_feature_list内
+userinfo_feature_list.extend(feature_list('UserInfo_', 1, 10))
+# 利用feature_list生成UserInfo_14-UserInfo_24这11个特征名称，并合并入userinfo_feature_list内
+userinfo_feature_list.extend(feature_list('UserInfo_', 14, 24))
+# 通过pandas的describe方法，查看每个特征的信息
+df_dataset[userinfo_feature_list].describe(include='all')
+
+'''
+3.2、UserInfo特征分类:
+通过3.1查看每个UserInfo特征信息，可知：
+UserInfo_2、UserInfo_4、UserInfo_7-9、UserInfo_19-20、UserInfo_22-24为类别型特征
+UserInfo_1、UserInfo_3、UserInfo_5-6、UserInfo_10、UserInfo_14-18、UserInfo_21为数值型特征
+'''
+# 1、将所有类别型特征名称存入userinfo_category_list
+# 创建userinfo_category_list列表，用来存储UserInfo的类别型特征
+userinfo_category_list = ['UserInfo_2', 'UserInfo_4']
+# 利用feature_list函数生成UserInfo_7-UserInfo_9这3个特征名称，并将结果合并入存入userinfo_category_list
+userinfo_category_list.extend(feature_list('UserInfo_', 7, 9))
+# 利用feature_list函数生成UserInfo_19-UserInfo_20这2个特征名称，并将结果合并入存入userinfo_category_list
+userinfo_category_list.extend(feature_list('UserInfo_', 19, 20))
+# 利用feature_list函数生成UserInfo_22-UserInfo_24这3个特征名称，并将结果合并入存入userinfo_category_list
+userinfo_category_list.extend(feature_list('UserInfo_', 22, 24))
+
+# 2、将所有数值型特征名称存入userinfo_numerical_list
+# 创建userinfo_numerical_list列表，用来存储UserInfo的数值型特征
+userinfo_numerical_list = ['UserInfo_1', 'UserInfo_3', 'UserInfo_10', 'UserInfo_21']
+# 利用feature_list函数生成UserInfo_5-UserInfo_6这2个特征名称，并将结果合并入存入userinfo_numerical_list
+userinfo_numerical_list.extend(feature_list('UserInfo_', 5, 6))
+# 利用feature_list函数生成UserInfo_14-UserInfo_18这5个特征名称，并将结果合并入存入userinfo_numerical_list
+userinfo_numerical_list.extend(feature_list('UserInfo_', 14, 18))
+
+'''
+3.3、UserInfo特征数据处理：
+3.3.1、对于类别型特征:
+3.3.1.1、UserInfo_9特征为通信运营商信息，需要对数据进行清洗，如:"中国移动"和“中国移动 ”（后面带个空格），需要清洗字符串
+3.3.1.2、UserInfo_22、23、24，这3个特征里‘D’占比都非常大:
+UserInfo_22有7个类别，UserInfo_23有23个类别，UserInfo_24类别超过了1900个，
+3.3.1.3、UserInfo_2、4、7、8、19、20这6个特征与地理位置相关，需要深入分析并创建新特征
+3.3.2、对于数值型特征:
+3.3.2.1、其他数值型特征里的数值都是诸如0、1、2、3、4等，都不超过10个，因此考虑将这些数值型特征转换成类别型特征
+3.3.2.2、UserInfo_18特征里数值较多，对该特征单独分析
+3.3.3、做数据处理时，创建4个函数：
+category_proportion_figure和target_proportion_figure可视化特征中每个类别/数值的数量比例及0和1标签的比例
+figures_in_feature批量展示列表内特征数据数量比例及0和1标签的比例
+figures_in_feature_clean批量展示列表内特征数据清洗后的数量比例及0和1标签的比例
+'''
+
+def category_proportion_figure(plot_data, figsize, title):
+    '''
+    该函数功能是统计数据集某一特征的所有类别/数值占该总数的比例，并按照0、1的数量进行堆叠柱状图展示
+    plot_data:需要做可视化的数据
+    title:图的标题
+    figsize:图的大小
+    '''
+    # 设置画图样式
+    matplotlib.style.use('ggplot')
+    # 指定默认字体 SimHei为黑体
+    matplotlib.rcParams['font.sans-ser
+                        
+                        if'] = ['SimHei']
+    # 正常显示负号
+    matplotlib.rcParams['axes.unicode_minus'] = False 
+    # 使用pyplot的figure方法画图
+    plt.figure()
+    # 计算该特征里标签0所包含的所有类别占总数据量的占比
+    plot_data[0] = plot_data[0] / len(df_dataset)
+    # 计算该特征里标签1所包含的所有类别占总数据量的占比
+    plot_data[1] = plot_data[1] / len(df_dataset)
+    # 画堆叠柱状图，颜色为绿色，并带网格，透明度为0.75
+    plot_data.plot(kind='bar', figsize=figsize, width = 0.25, colormap='summer', grid=True, stacked=True, alpha=1)
+    # 添加图的标题
+    plt.title(label=title)
+    # 展示结果
+    return plt.show()
+
+
+def target_proportion_figure(plot_data, figsize, title):
+    '''
+    该函数功能是对数据集某一特征的所有类别/数值按照0、1的比例进行堆叠柱状图展示
+    plot_data:需要做可视化的数据
+    title:图的标题
+    figsize:图的大小
+    '''
+    # 设置画图样式
+    matplotlib.style.use('ggplot')
+    # 指定默认字体 SimHei为黑体
+    matplotlib.rcParams['font.sans-serif'] = ['SimHei']
+    # 正常显示负号
+    matplotlib.rcParams['axes.unicode_minus'] = False 
+    # 使用pyplot的figure方法画图
+    plt.figure()
+    # 由于输入数据可能会存在nan，利用fillna方法将nan填充为0
+    plot_data[0].fillna(0, axis=0, inplace=True)
+    plot_data[1].fillna(0, axis=0, inplace=True)
+    # 计算0和1的总和
+    plot_data['sum'] = plot_data[0] + plot_data[1]
+    # 计算0的比例,并重新传给plot_data[0]
+    plot_data[0] = plot_data[0] / plot_data['sum']
+    # 计算1的比例,并重新传给plot_data[1]
+    plot_data[1] = plot_data[1] / plot_data['sum']
+    #删除sum列
+    plot_data.drop('sum', axis=1, inplace=True)
+    # 画堆叠柱状图，颜色为绿色，并带网格，透明度为0.75
+    plot_data.plot(kind='bar', figsize=figsize, width = 0.25, colormap='summer', grid=True, stacked=True, alpha=1)
+    # 添加图的标题
+    plt.title(label=title)
+    # 展示结果
+    return plt.show()
+
+
+def figures_in_featurelist(featurelist, name):
+    '''
+    该函数功能是对列表内所有特征名称所对应的数据进行批量可视化展示，展示每个特征内各个类别的占比
+    featurelist:特征名称列表
+    name:特征名称
+    '''   
+    # 遍历列表内每个类别型特征名
+    for i in featurelist:
+        # 使用split函数提取特征名称的后缀数字
+        number = i.split('_')[1]
+        # 定义feature_name，为name加上拆分出的后缀数字，例如‘webloginfo_19’
+        feature_name = name + number
+        # 利用groupby方法将处理后的特征按照类别进行分组，value_counts方法分别统计每个类别中0和1的数量,将结果存入feature_name    
+        feature_name = df_dataset.groupby(by=i)['target'].value_counts().unstack()
+        # 利用category_proportion_figure函数可视化结果
+        category_proportion_figure(plot_data=feature_name, figsize=(12,6), title=i+'各类别数量占比')
+        # 利用target_proportion_figure函数，重新对处理后的特征各类别中0和1的比例进行可视化
+        target_proportion_figure(plot_data=feature_name, figsize=(12,6), title=i+'各类别中0和1标签占比')    
+
+        
+def figures_in_featurelist_clean(featurelist, name):
+    '''
+    该函数功能是对列表内所有特征名称所对应的清洗后的数据进行批量可视化展示，展示每个特征内各个类别的占比和各个类别0、1标签的比例
+    featurelist:特征名称列表
+    name:特征名称
+    '''               
+    # 遍历列表内每个类别型特征名
+    for i in featurelist:
+        # 使用split函数提取特征名称的后缀数字
+        number = i.split('_')[1]
+        # 定义feature_name，为name加上拆分出的后缀数字，例如‘webloginfo_19’
+        feature_name = name + number
+        # 利用groupby方法将处理后的特征按照类别进行分组，value_counts方法分别统计每个类别中0和1的数量,将结果存入feature_name    
+        feature_name = df_dataset.groupby(by=i)['target'].value_counts().unstack()
+        # 利用category_proportion_figure函数，重新对处理后的特征各类别比例可视化结果
+        category_proportion_figure(plot_data=feature_name, figsize=(12,6), title='特征处理后'+i+'各类别数量占比')                
+        # 利用target_proportion_figure函数，重新对处理后的特征各类别中0和1的比例进行可视化
+        target_proportion_figure(plot_data=feature_name, figsize=(12,6), title='特征处理后'+i+'各类别中0和1标签占比')  
+        
+        
+ '''
+3.3.1.1、UserInfo_9特征处理：
+'''
+# 利用groupby方法将UserInfo_9特征按照类别（移动、联通等）进行分组
+# 利用value_counts方法分别统计每个类别中0和1的数量，将结果存入userinfo_9内
+userinfo_9 = df_dataset.groupby(by='UserInfo_9')['target'].value_counts().unstack()
+# 利用category_proportion_figure函数对UserInfo_9特征各类别中0和1的数量进行可视化
+category_proportion_figure(plot_data=userinfo_9, figsize=(12,6), title='UserInfo_9各类别数量占比堆叠柱状图')
+
+
+
